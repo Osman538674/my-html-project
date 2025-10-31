@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>⚡️ 3D Carousel Cover Flow</title>
+    <style>
+        :root {
+            --card-height: 500px;
+            --card-width: 530px;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #111;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; 
+            position: relative;
+        }
+
+        /* --- 3D СЦЕНА --- */
+        .carousel-container {
+            perspective: 1500px;
+            width: 100vw;
+            height: var(--card-height);
+            margin-bottom: 50px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .carousel {
+            position: relative;
+            width: var(--card-width);
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+
+        .card {
+            position: absolute;
+            width: var(--card-width);
+            height: var(--card-height);
+            top: 0;
+            left: 0;
+            background-size: cover;
+            background-position: center;
+            background-color: #5d3587; 
+            border-radius: 18px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
+        }
+
+        /* Скрываем все неактивные карточки */
+        .card:not([class*="current"]):not([class*="prev"]):not([class*="next"]) {
+            opacity: 0;
+            transform: translate3d(0, 0, -2000px); 
+        }
+
+        /* --- ПОЗИЦИОНИРОВАНИЕ КАРТОЧЕК --- */
+
+        /* 1. АКТИВНЫЙ СЛАЙД (CURRENT) */
+        .card.current {
+            transform: translate3d(0, 0, 100px) scale(1.05);
+            z-index: 10;
+            opacity: 1;
+        }
+
+        /* 2. БЛИЖАЙШИЕ СОСЕДИ (±1) */
+        .card.prev-1 {
+            transform: translate3d(-350px, 0, -100px) rotateY(40deg) scale(0.85); 
+            z-index: 5;
+            opacity: 0.8;
+        }
+
+        .card.next-1 {
+            transform: translate3d(350px, 0, -100px) rotateY(-40deg) scale(0.85); 
+            z-index: 5;
+            opacity: 0.8;
+        }
+
+        /* 3. ДАЛЬНИЕ СОСЕДИ (±2) */
+        .card.prev-2 {
+            transform: translate3d(-700px, 0, -400px) rotateY(55deg) scale(0.7); 
+            z-index: 1;
+            opacity: 0.4;
+        }
+
+        .card.next-2 {
+            transform: translate3d(700px, 0, -400px) rotateY(-55deg) scale(0.7); 
+            z-index: 1;
+            opacity: 0.4;
+        }
+
+        /* --- КНОПКИ УПРАВЛЕНИЯ --- */
+        .controls button {
+            padding: 12px 30px;
+            margin: 0 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        #prev {
+            background-color: #6c757d;
+            color: white;
+        }
+        #prev:hover {
+            background-color: #5a6268;
+        }
+
+        #next {
+            background-color: #28a745; 
+            color: white;
+        }
+        #next:hover {
+            background-color: #1e7e34;
+        }
+
+        /* --- БЛЁСТКИ --- */
+        .glitter {
+            position: absolute;
+            top: -50px;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: fall linear forwards;
+            filter: brightness(1.5) contrast(1.5);
+        }
+
+        /* Анимация падения с мерцанием */
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.9;
+                filter: brightness(2) contrast(2);
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* Дополнительная анимация мерцания */
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; filter: brightness(1.8); }
+            50% { opacity: 0.7; filter: brightness(2.2); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Контейнер для блёсток -->
+    <div id="glitter-container"></div>
+    
+    <div class="box-content">
+        <h1 style="color: rgb(243, 241, 238);margin-top: -100px;font-weight: 300;">Пушистый калейдоскоп счастья</h1>
+    </div>
+    <div class="carousel-container">
+        <div class="carousel" id="carousel"></div>
+    </div>
+
+    <div class="controls">
+        <button id="prev">PREV</button>
+        <button id="next">NEXT</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const totalCards = 15;
+            const carouselElement = document.getElementById('carousel');
+            const prevButton = document.getElementById('prev');
+            const nextButton = document.getElementById('next');
+            let currentIndex = 0;
+            let cards = [];
+
+            function generateCards() {
+                for (let i = 0; i < totalCards; i++) {
+                    const card = document.createElement('div');
+                    card.classList.add('card');
+                    card.setAttribute('data-index', i);
+                    card.style.backgroundImage = `url('img/${i + 1}.jpg')`; 
+                    carouselElement.appendChild(card);
+                    cards.push(card);
+                }
+            }
+
+            function updateCarousel() {
+                cards.forEach((card, index) => {
+                    let className = '';
+                    
+                    let diff = index - currentIndex;
+
+                    if (diff > totalCards / 2) {
+                        diff -= totalCards;
+                    } else if (diff < -totalCards / 2) {
+                        diff += totalCards;
+                    }
+
+                    if (diff === 0) {
+                        className = 'current'; 
+                    } else if (diff === -1) {
+                        className = 'prev-1'; 
+                    } else if (diff === 1) {
+                        className = 'next-1'; 
+                    } else if (diff === -2) {
+                        className = 'prev-2'; 
+                    } else if (diff === 2) {
+                        className = 'next-2'; 
+                    } else {
+                        className = '';
+                    }
+
+                    card.className = `card ${className}`;
+                });
+            }
+
+            function nextSlide() {
+                currentIndex = (currentIndex + 1) % totalCards;
+                updateCarousel();
+            }
+
+            function prevSlide() {
+                currentIndex = (currentIndex - 1 + totalCards) % totalCards;
+                updateCarousel();
+            }
+
+            // --- ФУНКЦИИ ДЛЯ БЛЁСТОК ---
+            function createGlitter() {
+                const glitter = document.createElement('div');
+                glitter.classList.add('glitter');
+                
+                // БОЛЬШИЕ размеры от 8 до 25px
+                const size = Math.random() * 17 + 8;
+                glitter.style.width = `${size}px`;
+                glitter.style.height = `${size}px`;
+                
+                // Случайная позиция по горизонтали
+                const left = Math.random() * 100;
+                glitter.style.left = `${left}vw`;
+                
+                // ЯРКИЕ цвета с высокой насыщенностью
+                const brightness = Math.random() * 0.6 + 0.8; // от 0.8 до 1.4
+                const colors = [
+                    `rgba(255, 215, 0, ${brightness})`, // яркий золотой
+                    `rgba(255, 255, 255, ${brightness})`, // яркий белый
+                    `rgba(255, 223, 0, ${brightness})`, // яркий желтый
+                    `rgba(255, 255, 150, ${brightness})`, // светящийся желтый
+                    `rgba(255, 248, 200, ${brightness})`, // яркий бежевый
+                    `rgba(255, 255, 100, ${brightness})`, // неоновый желтый
+                    `rgba(255, 240, 150, ${brightness})`, // светящийся золотой
+                    `rgba(255, 255, 180, ${brightness})`  // очень яркий белый
+                ];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                glitter.style.background = randomColor;
+                
+                // Добавляем эффект мерцания
+                const sparkleDuration = Math.random() * 0.5 + 0.3;
+                glitter.style.animation = `fall linear forwards, sparkle ${sparkleDuration}s infinite`;
+                
+                // Разная продолжительность падения
+                const duration = Math.random() * 4 + 2; // от 2 до 6 секунд
+                glitter.style.animationDuration = `${duration}s, ${sparkleDuration}s`;
+                
+                // Случайная задержка начала
+                const delay = Math.random() * 1;
+                glitter.style.animationDelay = `${delay}s`;
+                
+                document.getElementById('glitter-container').appendChild(glitter);
+                
+                // Удаляем элемент после завершения анимации
+                setTimeout(() => {
+                    if (glitter.parentNode) {
+                        glitter.parentNode.removeChild(glitter);
+                    }
+                }, (duration + delay) * 1000);
+            }
+
+            function startGlitterEffect() {
+                // Создаем ОЧЕНЬ МНОГО блёсток сразу - 50 штук!
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => createGlitter(), Math.random() * 1000);
+                }
+                
+                // Продолжаем создавать блёстки ОЧЕНЬ ЧАСТО - каждые 50ms!
+                setInterval(() => {
+                    // 80% chance to create glitter - почти постоянно создаем новые
+                    if (Math.random() > 0.2) {
+                        createGlitter();
+                    }
+                }, 150);
+
+                // Дополнительный интервал для еще большего количества
+                setInterval(() => {
+                    // Создаем по 2-5 блёсток за раз
+                    const batchCount = Math.floor(Math.random() * 4) + 2;
+                    for (let i = 0; i < batchCount; i++) {
+                        setTimeout(() => createGlitter(), Math.random() * 200);
+                    }
+                }, 400);
+            }
+
+            // Инициализация
+            generateCards();
+            updateCarousel();
+            startGlitterEffect();
+
+            nextButton.addEventListener('click', nextSlide);
+            prevButton.addEventListener('click', prevSlide);
+        });
+    </script>
+</body>
+</html>
